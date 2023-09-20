@@ -26,9 +26,13 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.HighAvailabilityOptions;
 import org.apache.flink.runtime.jobgraph.JobGraph;
 import org.apache.flink.runtime.jobgraph.JobVertex;
+import org.apache.flink.runtime.jobgraph.tasks.CheckpointCoordinatorConfiguration;
+import org.apache.flink.runtime.jobgraph.tasks.JobCheckpointingSettings;
 import org.apache.flink.runtime.jobmanager.HighAvailabilityMode;
+import org.apache.flink.runtime.state.hashmap.HashMapStateBackend;
 import org.apache.flink.runtime.testtasks.NoOpInvokable;
 import org.apache.flink.util.FileUtils;
+import org.apache.flink.util.SerializedValue;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Param;
@@ -65,9 +69,14 @@ public class HighAvailabilityServiceBenchmark extends BenchmarkBase {
 		context.miniCluster.executeJobBlocking(buildNoOpJob());
 	}
 
-	private JobGraph buildNoOpJob() {
+	private JobGraph buildNoOpJob() throws Exception {
 		JobGraph jobGraph = new JobGraph(JobID.generate(), UUID.randomUUID().toString());
 		jobGraph.addVertex(createNoOpVertex());
+		jobGraph.setSnapshotSettings(new JobCheckpointingSettings(
+				CheckpointCoordinatorConfiguration
+						.builder()
+						.build(),
+				new SerializedValue<>(new HashMapStateBackend())));
 		return jobGraph;
 	}
 
@@ -97,8 +106,10 @@ public class HighAvailabilityServiceBenchmark extends BenchmarkBase {
 
 		@Override
 		public void setUp() throws Exception {
-			testingServer = new TestingServer();
-			testingServer.start();
+			if (highAvailabilityMode == HighAvailabilityMode.ZOOKEEPER) {
+				testingServer = new TestingServer();
+				testingServer.start();
+			}
 
 			super.setUp();
 		}
@@ -115,8 +126,10 @@ public class HighAvailabilityServiceBenchmark extends BenchmarkBase {
 		@Override
 		public void tearDown() throws Exception {
 			super.tearDown();
-			testingServer.stop();
-			testingServer.close();
+			if (highAvailabilityMode == HighAvailabilityMode.ZOOKEEPER) {
+				testingServer.stop();
+				testingServer.close();
+			}
 			FileUtils.deleteDirectory(haDir);
 		}
 	}
