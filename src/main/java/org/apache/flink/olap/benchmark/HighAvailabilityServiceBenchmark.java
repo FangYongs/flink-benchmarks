@@ -118,8 +118,10 @@ public class HighAvailabilityServiceBenchmark extends BenchmarkBase {
 		protected Configuration createConfiguration() {
 			Configuration configuration = super.createConfiguration();
 			configuration.set(HighAvailabilityOptions.HA_MODE, highAvailabilityMode.name());
-			configuration.set(HighAvailabilityOptions.HA_ZOOKEEPER_QUORUM, testingServer.getConnectString());
 			configuration.set(HighAvailabilityOptions.HA_STORAGE_PATH, haDir.toURI().toString());
+			if (highAvailabilityMode == HighAvailabilityMode.ZOOKEEPER) {
+				configuration.set(HighAvailabilityOptions.HA_ZOOKEEPER_QUORUM, testingServer.getConnectString());
+			}
 			return configuration;
 		}
 
